@@ -1,6 +1,6 @@
 #  coding: utf-8 
 import socketserver
-
+import os
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,103 @@ class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        self.root = os.path.abspath(".")
+        
+        method = self.get_method(self.data)
+        file_name = self.get_file_name(self.data)
+        file_type = self.get_file_type(self.data)
+
+        self.print_info(self.data, file_name, file_type)
+
+        # check the method
+        if method != "GET":
+            response_start_line = "HTTP/1.1 405 Method Not Allowed"
+            response_headers = "Content-Type: text/{}\n".format(file_type)
+            response_body = '"{}" Method Not Allowed'.format(method)
+        else:
+            
+            # handle get root
+            if file_name == "/":
+                file_name = "/index.html"
+                # try:
+                #     self.next_directory()
+                # except OSError:
+                #     response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
+                #     response_headers = "\n"
+                #     response_body = "Root Not Found!"
+                # else:
+                #     response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
+                #     response_headers = "\n"
+                #     response_body = "Root Found!"
+                # finally:
+                #     response = response_start_line + response_headers + response_body
+                #     self.request.sendall(bytearray(response,'utf-8'))
+                #     get_root = True
+                #     self.initial_directory()
+                #     return 
+        
+            # handle others
+            # change current directory to /www
+            self.next_directory()
+
+            try:
+                file_name = file_name[1:]
+                file = open(file_name, 'r')
+
+            except FileNotFoundError:
+                response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
+                response_headers = "Content-Type: text/{}\n".format(file_type)
+                response_body = "File Not Found!"
+
+            else:
+                file_data = file.read()
+                file.close()
+                response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
+                response_headers = "Content-Type: text/{}\n".format(file_type)
+                response_body = file_data
+
+        response = response_start_line + response_headers + response_body
+        self.request.sendall(bytearray(response,'utf-8'))
+
+        self.initial_directory()
+
+        return
+
+    def get_request_url(self, data):
+        return data.splitlines()[0].decode("utf-8")
+
+    def get_file_name(self, data):
+        return data.splitlines()[0].decode("utf-8").split()[1]
+
+    def get_method(self, data):
+        return data.splitlines()[0].decode("utf-8").split()[0]
+
+    def get_file_type(self, data):
+        type_data = data.splitlines()[0].decode("utf-8").split()[1]
+        if "." in type_data:
+            return type_data.split(".")[1]
+        return "Invalid Type"
+
+    def next_directory(self):
+        root = os.path.abspath(".")
+        os.chdir(root + "/www")
+        return
+
+    def initial_directory(self):
+        os.chdir(self.root)
+        return
+
+    def print_info(self, data, file_name, file_type):
+
+        print("************************DATA INFO**************************")
+        print("Raw data:")
+        for item in (data.splitlines()):
+            print(item)
+        print("\nFile type:", file_type)
+        print("File name:", file_name)
+        print("Request url:", self.get_request_url(self.data))
+        print("****************************END****************************\n")
+        return 
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
