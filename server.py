@@ -29,37 +29,44 @@ import os
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
+        # initialize data, root, host
         self.data = self.request.recv(1024).strip()
         self.root = os.path.abspath(".")
         self.host = "http://127.0.0.1:8000"
 
+        # get HTTP method, path, requested file name and type.
         method = self.get_method(self.data)
         file_name = self.get_file_name(self.data)
         path = os.path.abspath("www") + file_name
         file_type = self.get_file_type(self.data, path)
 
-        # check the method
+        # check HTTP method
         if method != "GET":
             response = self.code405(method, file_type)
 
         else:
-            # handle get root
+            # when it is a directory
             if path.endswith("/"):
                 path += "index.html"
                 file_type = "html"
-        
+            
+            # try to open the file name
             try:
                 file = open(path, 'r')
             
+            # file not found
             except FileNotFoundError:
                 response = self.code404(file_type)
 
+            # the opened is a directory
             except IsADirectoryError:
                 response = self.code301(file_name)
 
+            # ok to open
             else:
                 response = self.code200(file_type, file)
 
+            # file type is not css or html
             if file_type == "Invalid Type":
                 response = self.code404(file_type)
             
@@ -104,7 +111,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
         type_data = data.splitlines()[0].decode("utf-8").split()[1]
         temp_path = path + "/"
         if os.path.isdir(temp_path):
-            path += "/"
             return "Directory"
         if "/" == type_data:
             return "Root"
