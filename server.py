@@ -1,6 +1,7 @@
 #  coding: utf-8 
 import socketserver
 import os
+import http
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,50 +36,70 @@ class MyWebServer(socketserver.BaseRequestHandler):
         
         method = self.get_method(self.data)
         file_name = self.get_file_name(self.data)
-        file_type = self.get_file_type(self.data)
+        path = os.path.abspath("www") + file_name
+        file_type = self.get_file_type(self.data, path)
 
         self.print_info(self.data, file_name, file_type)
+        
+        print(path)
 
         # check the method
         if method != "GET":
-            response_start_line = "HTTP/1.1 405 Method Not Allowed"
-            response_headers = "Content-Type: text/{}\n".format(file_type)
-            response_body = '"{}" Method Not Allowed'.format(method)
+            response = self.code405(method, file_type)
+
         else:
-            
             # handle get root
-            if file_name.endswith("/"):
-                file_name += "index.html"
-
-
-
-                
-            # handle others
-            # change current directory to /www
-            self.next_directory()
-
+            if path.endswith("/"):
+                path += "index.html"
+                file_type = "html"
+            
+            print("Path:", path)
+        
             try:
-                file_name = file_name[1:]
-                file = open(file_name, 'r')
-
+                file = open(path, 'r')
+            
             except FileNotFoundError:
-                response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
-                response_headers = "Content-Type: text/{}\n".format(file_type)
-                response_body = "File Not Found!"
+                response = self.code404(file_type)
+
+            except IsADirectoryError:
+                response = self.code301(file_type)
 
             else:
-                file_data = file.read()
-                file.close()
-                response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
-                response_headers = "Content-Type: text/{}\n".format(file_type)
-                response_body = file_data
+                response = self.code200(file_type, file)
 
-        response = response_start_line + response_headers + response_body
+            if file_type == "Invalid Type":
+                response = self.code404(file_type)
+            
+                    
         self.request.sendall(bytearray(response,'utf-8'))
-
         self.initial_directory()
-
         return
+
+    def code301(self, file_type):
+        response_start_line = "HTTP/1.1 301 Moved Permanently"
+        response_headers = "Content-Type: text/{}\n".format(file_type)
+        response_body = "Redirected!"
+        return (response_start_line + response_headers + response_body)
+
+    def code405(self, method, file_type):
+        response_start_line = "HTTP/1.1 405 Method Not Allowed"
+        response_headers = "Content-Type: text/{}\n".format(file_type)
+        response_body = '"{}" Method Not Allowed'.format(method)
+        return (response_start_line + response_headers + response_body)
+    
+    def code200(self, file_type, file):
+        file_data = file.read()
+        file.close()
+        response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
+        response_headers = "Content-Type: text/{}\n".format(file_type)
+        response_body = file_data
+        return (response_start_line + response_headers + response_body)
+    
+    def code404(self, file_type):
+        response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
+        response_headers = "Content-Type: text/{}\n".format(file_type)
+        response_body = "File Not Found!"
+        return (response_start_line + response_headers + response_body)
 
     def get_request_url(self, data):
         return data.splitlines()[0].decode("utf-8")
@@ -89,23 +110,29 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def get_method(self, data):
         return data.splitlines()[0].decode("utf-8").split()[0]
 
-    def get_file_type(self, data):
+    def get_file_type(self, data, path):
         type_data = data.splitlines()[0].decode("utf-8").split()[1]
+        print("Type data:", type_data)
+
+        temp_path = path + "/"
+        if os.path.isdir(temp_path):
+            path += "/"
+            return "Directory"
+        if "/" == type_data:
+            return "Root"
+        if type_data.endswith("/"):
+            return "Directory"
+        if "." not in type_data.split("/")[-1]:
+            return "Invalid Type"
         if "." in type_data:
             return type_data.split(".")[1]
         return "Invalid Type"
-
-    def next_directory(self):
-        root = os.path.abspath(".")
-        os.chdir(root + "/www")
-        return
 
     def initial_directory(self):
         os.chdir(self.root)
         return
 
     def print_info(self, data, file_name, file_type):
-
         print("************************DATA INFO**************************")
         print("Raw data:")
         for item in (data.splitlines()):
