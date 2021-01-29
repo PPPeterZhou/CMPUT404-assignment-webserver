@@ -47,25 +47,12 @@ class MyWebServer(socketserver.BaseRequestHandler):
         else:
             
             # handle get root
-            if file_name == "/":
-                file_name = "/index.html"
-                # try:
-                #     self.next_directory()
-                # except OSError:
-                #     response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
-                #     response_headers = "\n"
-                #     response_body = "Root Not Found!"
-                # else:
-                #     response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
-                #     response_headers = "\n"
-                #     response_body = "Root Found!"
-                # finally:
-                #     response = response_start_line + response_headers + response_body
-                #     self.request.sendall(bytearray(response,'utf-8'))
-                #     get_root = True
-                #     self.initial_directory()
-                #     return 
-        
+            if file_name.endswith("/"):
+                file_name += "index.html"
+
+
+
+                
             # handle others
             # change current directory to /www
             self.next_directory()
