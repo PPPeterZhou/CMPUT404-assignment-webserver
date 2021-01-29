@@ -31,7 +31,8 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         self.root = os.path.abspath(".")
-        
+        self.host = "http://127.0.0.1:8000"
+
         method = self.get_method(self.data)
         file_name = self.get_file_name(self.data)
         path = os.path.abspath("www") + file_name
@@ -54,7 +55,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 response = self.code404(file_type)
 
             except IsADirectoryError:
-                response = self.code301(file_type)
+                response = self.code301(file_name)
 
             else:
                 response = self.code200(file_type, file)
@@ -65,11 +66,10 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.request.sendall(bytearray(response,'utf-8'))
         return
 
-    def code301(self, file_type):
+    def code301(self, file_name):
         response_start_line = "HTTP/1.1 301 Moved Permanently"
-        response_headers = "Content-Type: text/{}\n".format(file_type)
-        response_body = "Redirected!"
-        return (response_start_line + response_headers + response_body)
+        response_headers = "Location: {}\n".format(self.host+file_name+"/")
+        return (response_start_line + response_headers)
 
     def code405(self, method, file_type):
         response_start_line = "HTTP/1.1 405 Method Not Allowed"
