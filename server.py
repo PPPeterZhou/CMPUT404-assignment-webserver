@@ -1,7 +1,6 @@
 #  coding: utf-8 
 import socketserver
 import os
-import http
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +26,6 @@ import http
 
 # try: curl -v -X GET http://127.0.0.1:8080/
 
-
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
@@ -39,10 +37,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
         path = os.path.abspath("www") + file_name
         file_type = self.get_file_type(self.data, path)
 
-        self.print_info(self.data, file_name, file_type)
-        
-        print(path)
-
         # check the method
         if method != "GET":
             response = self.code405(method, file_type)
@@ -52,8 +46,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
             if path.endswith("/"):
                 path += "index.html"
                 file_type = "html"
-            
-            print("Path:", path)
         
             try:
                 file = open(path, 'r')
@@ -70,9 +62,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             if file_type == "Invalid Type":
                 response = self.code404(file_type)
             
-                    
         self.request.sendall(bytearray(response,'utf-8'))
-        self.initial_directory()
         return
 
     def code301(self, file_type):
@@ -112,8 +102,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
     def get_file_type(self, data, path):
         type_data = data.splitlines()[0].decode("utf-8").split()[1]
-        print("Type data:", type_data)
-
         temp_path = path + "/"
         if os.path.isdir(temp_path):
             path += "/"
@@ -127,21 +115,6 @@ class MyWebServer(socketserver.BaseRequestHandler):
         if "." in type_data:
             return type_data.split(".")[1]
         return "Invalid Type"
-
-    def initial_directory(self):
-        os.chdir(self.root)
-        return
-
-    def print_info(self, data, file_name, file_type):
-        print("************************DATA INFO**************************")
-        print("Raw data:")
-        for item in (data.splitlines()):
-            print(item)
-        print("\nFile type:", file_type)
-        print("File name:", file_name)
-        print("Request url:", self.get_request_url(self.data))
-        print("****************************END****************************\n")
-        return 
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
