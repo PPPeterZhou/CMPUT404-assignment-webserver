@@ -71,31 +71,32 @@ class MyWebServer(socketserver.BaseRequestHandler):
                 response = self.code404(file_type)
             
         self.request.sendall(bytearray(response,'utf-8'))
+        print(response)
         return
 
     def code301(self, file_name):
-        response_start_line = "HTTP/1.1 301 Moved Permanently"
-        response_headers = "Location: {}\n".format(self.host+file_name+"/")
+        response_start_line = "HTTP/1.1 301 Moved Permanently\r\n"
+        response_headers = "Location: {}\r\n".format(self.host+file_name+"/")
         return (response_start_line + response_headers)
 
     def code405(self, method, file_type):
-        response_start_line = "HTTP/1.1 405 Method Not Allowed"
-        response_headers = "Content-Type: text/{}\n".format(file_type)
-        response_body = '"{}" Method Not Allowed'.format(method)
+        response_start_line = "HTTP/1.1 405 Method Not Allowed\r\n"
+        response_headers = "Content-Type: text/{}\r\n\r\n".format(file_type)
+        response_body = '"{}" Method Not Allowed\r\n'.format(method)
         return (response_start_line + response_headers + response_body)
     
     def code200(self, file_type, file):
         file_data = file.read()
         file.close()
-        response_start_line = "HTTP/1.1 200 OK Not FOUND!\n"
-        response_headers = "Content-Type: text/{}\n".format(file_type)
-        response_body = file_data
+        response_start_line = "HTTP/1.1 200 OK FOUND!\r\n"
+        response_headers = "Content-Type: text/{}\r\n\r\n".format(file_type)
+        response_body = file_data + "\r\n"
         return (response_start_line + response_headers + response_body)
     
     def code404(self, file_type):
-        response_start_line = "HTTP/1.1 404 Not FOUND!\n"  
-        response_headers = "Content-Type: text/{}\n".format(file_type)
-        response_body = "File Not Found!"
+        response_start_line = "HTTP/1.1 404 Not FOUND!\r\n"  
+        response_headers = "Content-Type: text/{}\r\n\r\n".format(file_type)
+        response_body = "File Not Found!\r\n"
         return (response_start_line + response_headers + response_body)
 
     def get_request_url(self, data):
